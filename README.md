@@ -1,6 +1,6 @@
 # SIV/SHIV-Barcode-Associated-Scripts
 
-Scripts to demultiplex next-generation sequencing and determine the abundance of individually barcoded SIV/SHIV viral lineages. 
+Scripts to process NGS data for Keele lab's barcoded SIV assay and determine the abundance of individually barcoded SIV/SHIV viral lineages. 
 
 "R" contains the original deprecated script - held for posterity. 
 
