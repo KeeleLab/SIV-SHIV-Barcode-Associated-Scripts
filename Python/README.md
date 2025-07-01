@@ -10,7 +10,6 @@
 - Dual-index detection: Supports dual-indexed sequencing (enable with `--dualindex`)
 - Quality filtering: Set thresholds for mean Phred quality and mask low-quality bases
 - Customizable output: Legacy format and matrix filtering options available
-- Automatic package installation: See `third_party_packages.py` for managing third-party dependencies
 
 ## Requirements
 
@@ -30,28 +29,35 @@
 
 ## Installation
 
-Before using **bcParse.py**, ensure all required third-party packages are installed.  
+Make a local copy of the base directory `bcParse_v2.53`.
+
+Ensure all required third-party packages are installed.  
 You can do this by running:
 
 ```python
 python third_party_packages.py
 ```
 
+Make sure .py permissions are set.
 
-This script will check for each required package and install any that are missing.
+```bash
+find /path/to/bcParse_v2.53/ -type f -name "*.py" -exec chmod u+x {} +
+```
 
 ## Usage
 
 ### Command-Line Mode
 
 ```python
-python bcParse.py --sample_path path/to/your.fastq --runinfo_path path/to/runinfo.xlsx --out_path path/to/output --stock 239M --dualindex
+python /path/to/bcParse_v2.53/bcParse.py --sample_path path/to/your.fastq --runinfo_path path/to/runinfo.xlsx --out_path path/to/output --stock 239M --dualindex
 ```
 
 ### GUI Mode
 
+We recommend this over CLI. 
+
 ```python
-python bcParse.py --gui
+python /path/to/bcParse_v2.53/bcParse.py --gui
 ```
 
 *This opens a file dialog for interactive selection of input/output files and parameters.*
