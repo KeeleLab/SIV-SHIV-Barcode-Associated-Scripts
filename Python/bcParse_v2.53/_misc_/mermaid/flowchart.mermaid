@@ -1,0 +1,165 @@
+%% v1
+
+sequenceDiagram
+    participant BCParse as bcParse_v2.3.py
+    participant Config as config.py
+    participant IO as utils/io.py
+    participant FQParser as utils/fastq_parser.py
+    participant CDParser as utils/countdata_parser.py
+    participant GUI as utils/gui.py
+
+    BCParse->>BCParse: Parse CLI arguments
+    alt GUI mode
+        BCParse->>GUI: ArgSelectionGUI().run()
+        GUI-->>BCParse: Return sample_path, runinfo_path, etc.
+    else CLI mode
+        BCParse->>BCParse: Get sample_path, runinfo_path, etc. from CLI args
+    end
+    BCParse->>BCParse: Check if sample_path, runinfo_path, out_path are provided
+    alt Missing paths
+        BCParse->>BCParse: Print error message
+        BCParse->>BCParse: Exit
+    else All paths present
+        BCParse->>BCParse: Print header
+        BCParse->>Config: get_settings(stock)
+        Config-->>BCParse: Return settings (dict)
+        BCParse->>BCParse: Print settings
+        BCParse->>IO: process_fastq_stream(sample_path, settings, mask)
+        IO->>IO: Open fastq file
+        loop For each record in fastq
+            IO->>FQParser: parse_fastq_rec(record)
+            FQParser->>FQParser: Q33conv(qual)
+            alt Mask low quality
+                 FQParser->>FQParser: mask lowQ bases
+            end
+            FQParser->>FQParser: Process sequence based on ref settings
+            alt dualindex
+                 FQParser->>FQParser: Extract bc based on 2 targets
+            else singleindex
+                 FQParser->>FQParser: Extract bc based on 1 target
+            end
+            alt barcode extraction success
+               FQParser-->>IO: Return idx_seq and bc_seq
+            else extraction failed
+               FQParser-->>IO: Skip record
+            end
+        end
+        IO-->>BCParse: Return {idx_seq: {bc_seq: count}}
+        BCParse->>IO: format_refdata(runinfo_path, settings['primer_path'], settings['barcode_path'])
+        IO->>IO: Read runinfo.xlsx
+        IO->>IO: Read primer and barcode data
+        IO-->>BCParse: Return runinfo, p5_refdict, bc_refdict
+        alt Dual index
+            BCParse->>IO: read_csv_to_dict(settings['p7_path'])
+            IO-->>BCParse: Return p7_refdict
+            BCParse->>BCParse: Create full index names (p5 + p7)
+        else Single index
+            BCParse->>BCParse: p7_refdict = None
+        end
+        BCParse->>CDParser: parse_countdata(countdict, runinfo, bc_refdict, p5_refdict, p7_refdict)
+        CDParser->>CDParser: __init__(countdict, runinfo, bc_refdict, p5_refdict, p7_refdict)
+        CDParser->>CDParser: single_index_ref(p5_refdict, runinfo) or dual_index_ref(p5_refdict, p7_refdict, runinfo)
+        CDParser->>CDParser: combine_known_idx()
+        alt ldist match to expected ref
+            CDParser->>CDParser: Match raw idx seqs to expected, and store it in idx_known
+        else no or multimatch
+            CDParser->>CDParser: send to idx_other
+        end
+        CDParser->>CDParser: count_dict_to_dfs()
+        CDParser->>CDParser: add_runinfo(runinfo)
+        CDParser->>CDParser: qc_ops()
+        BCParse->>IO: write_output(runinfo_df, settings_dict, args_dict, res_pcd, out_path, legacy_format, filt_mat_ac)
+        IO->>IO: Create Excel writer
+        IO->>IO: Add analysis settings to Excel
+        IO->>IO: Add matrix to Excel
+        IO->>IO: Write long-format CSV
+        IO-->>BCParse: Output files written
+end
+
+%% v2
+
+sequenceDiagram
+    autonumber
+    participant User
+    participant BCParse as bcParse_v2.3.py
+    participant GUI as utils/gui.py
+    participant Config as config.py
+    participant IO as utils/io.py
+    participant FQParser as utils/fastq_parser.py
+    participant CDParser as utils/countdata_parser.py
+
+    User->>BCParse: Start script (CLI args or --gui)
+    BCParse->>BCParse: Parse CLI arguments
+    alt --gui flag used
+        BCParse->>GUI: ArgSelectionGUI().run()
+        GUI-->>BCParse: Return sample_path, runinfo_path, out_path, stock, mean_qual, mismatches, mask, mask_qual, filt_mat_ac, legacy_format
+    else CLI mode
+        BCParse->>BCParse: Get sample_path, runinfo_path, out_path, stock, mean_qual, mismatches, mask, mask_qual, filt_mat_ac, legacy_format from CLI args
+    end
+
+    BCParse->>BCParse: Check if sample_path, runinfo_path, out_path are provided
+    alt Missing paths
+        BCParse->>BCParse: Print error message
+        BCParse->>BCParse: Exit
+    else All paths present
+        BCParse->>BCParse: Print header, version, and lab info
+        BCParse->>Config: get_settings(stock)
+        Config-->>BCParse: Return settings dict (stock-specific, e.g., ref_p5, tlen_p5, rdir, dualindex, etc.)
+        BCParse->>BCParse: Update settings with CLI/GUI overrides (mean_qual, mismatches, mask, mask_qual)
+        BCParse->>BCParse: Print settings summary
+        BCParse->>IO: process_fastq_stream(sample_path, settings, mask)
+        IO->>IO: Open FASTQ file (streaming)
+        loop For each FASTQ record
+            IO->>FQParser: parse_fastq_rec(record)
+            FQParser->>FQParser: Q33conv(qual)
+            alt mask enabled
+                FQParser->>FQParser: Mask low-quality bases (set to N if below mask_qual)
+            end
+            FQParser->>FQParser: Identify index and barcode regions (ref_p5, tlen_p5, ref_bc, tlen_bc)
+            alt rdir == rev
+                FQParser->>FQParser: Reverse complement as needed
+            end
+            alt dualindex enabled
+                FQParser->>FQParser: Extract p7 index (ref_p7, tlen_p7) and pad barcode with fill_seq if short
+            end
+            FQParser->>FQParser: Apply mean_qual and mismatches thresholds
+            alt Extraction success
+                FQParser-->>IO: Return idx_seq, bc_seq
+            else Extraction failed
+                FQParser-->>IO: Skip record
+            end
+        end
+        IO-->>BCParse: Return countdict {idx_seq: {bc_seq: count}}
+        BCParse->>IO: format_refdata(runinfo_path, settings['primer_path'], settings['barcode_path'])
+        IO->>IO: Read runinfo.xlsx, primer, and barcode reference data
+        IO-->>BCParse: Return runinfo, p5_refdict, bc_refdict
+        alt dualindex enabled
+            BCParse->>IO: read_csv_to_dict(settings['p7_path'])
+            IO-->>BCParse: Return p7_refdict
+            BCParse->>BCParse: Create full index names (p5 + p7)
+        else single index
+            BCParse->>BCParse: Set p7_refdict = None
+        end
+        %% --- COUNTDATA PARSER: THE CORE ANALYSIS ENGINE ---
+        BCParse->>CDParser: parse_countdata(countdict, runinfo, bc_refdict, p5_refdict, p7_refdict)
+        CDParser->>CDParser: __init__(countdict, runinfo, bc_refdict, p5_refdict, p7_refdict)
+        CDParser->>CDParser: Build index reference (single_index_ref or dual_index_ref)
+        CDParser->>CDParser: combine_known_idx()
+        loop For each observed idx_seq
+            alt Levenshtein match to expected index
+                CDParser->>CDParser: Assign to idx_known (matched index group)
+            else No or ambiguous match
+                CDParser->>CDParser: Assign to idx_other (unknown/ambiguous group)
+            end
+        end
+        CDParser->>CDParser: count_dict_to_dfs() (convert countdict to DataFrames)
+        CDParser->>CDParser: add_runinfo(runinfo) (annotate with runinfo columns)
+        CDParser->>CDParser: qc_ops() (apply QC, filtering, and summary stats)
+        CDParser-->>BCParse: Return runinfo_df, settings_dict, args_dict, res_pcd (results DataFrames)
+        %% --- OUTPUT ---
+        BCParse->>IO: write_output(runinfo_df, settings_dict, args_dict, res_pcd, out_path, legacy_format, filt_mat_ac)
+        IO->>IO: Create ExcelWriter, add analysis settings, matrix, and runinfo to Excel
+        IO->>IO: Write long-format CSV and legacy outputs if requested
+        IO-->>BCParse: Output files written
+        BCParse->>User: Print summary, output file locations, and exit
+    end
