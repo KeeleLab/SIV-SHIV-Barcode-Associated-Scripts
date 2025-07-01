@@ -2,7 +2,7 @@
 
 Scripts to demultiplex next-generation sequencing and determine the abundance of individually barcoded SIV/SHIV viral lineages. 
 
-"R" contains the original script with associated support files - held for posterity. 
+"R" contains the original deprecated script - held for posterity. 
 
 "Python" contains the latest active script series.
 
