@@ -18,24 +18,24 @@
   - `config.py`
   - `utils/io.py`
   - `utils/countdata_parser.py`
+  - `utils/fastq_parser.py`
   - `utils/gui.py`
 - Third-party packages:
   - `pandas`
   - `tqdm`
   - `numpy`
   - `levenshtein`
-- Automatic installation:  
-  Run `third_party_packages.py` to check for and install required Python packages automatically.
+- Pre-configured `ref` directory containing necessary reference data.
 
 ## Installation
 
-Make a local copy of the base directory `bcParse_v2.53`.
+**Make a local copy of the base directory `bcParse_v2.53`.**
 
 Ensure all required third-party packages are installed.  
 You can do this by running:
 
 ```python
-python third_party_packages.py
+python /path/to/bcParse_v2.53/utils/third_party_packages.py
 ```
 
 Make sure .py permissions are set.
