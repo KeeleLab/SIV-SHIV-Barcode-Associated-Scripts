@@ -5,6 +5,6 @@ Scripts written to process NGS data for Keele lab's barcoded SIV assay and deter
 - "R" contains the original R pipeline held for posterity. 
 - "Python" contains an intermediate python refactor.
 
-These are now deprecated in favor of the actively maintained [bcparse package](https://github.com/chazgoo/bcparse).
+These are now deprecated in favor of the actively maintained [bcparse package](https://github.com/KeeleLab/bcparse).
 
 For questions, please email: keelebf@mail.nih.gov or charles.goodman@nih.gov
